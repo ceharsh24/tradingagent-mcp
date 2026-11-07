@@ -228,11 +228,19 @@ def _check_keys(cfg: dict | None = None) -> None:
         cfg = build_default_config()
     for tier in ("quick_think_provider", "deep_think_provider"):
         provider = (cfg.get(tier) or cfg.get("llm_provider") or "").lower()
+        if provider == "chatgpt":
+            from tradingagents.llm_clients.chatgpt_auth import AUTH_FILE
+
+            if not AUTH_FILE.exists():
+                raise ValueError(
+                    "TradingAgents is set to use your ChatGPT plan, but this Mac is not signed "
+                    "in. Run: <repo>/.venv/bin/tradingagents login chatgpt, then restart.")
+            continue
         var = _PROVIDER_KEYS.get(provider)
         if var and not os.getenv(var, "").strip():
             raise ValueError(
                 f"{var} is not set, and TradingAgents is configured to use {provider}. "
-                "Add it to ~/.tradingagents/.env and restart Claude Code."
+                "Add it to the repo's .env (or ~/.tradingagents/.env) and restart."
             )
 
 

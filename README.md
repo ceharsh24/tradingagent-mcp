@@ -1,25 +1,73 @@
-# tradingagents-claude
+# TradingAgents MCP
 
-A Claude Code plugin for multi-agent stock analysis in the style of [TradingAgents](https://github.com/TauricResearch/TradingAgents).
+A local MCP server and research skill for Codex and Claude Code, built on the upstream [TradingAgents](https://github.com/TauricResearch/TradingAgents) Python library. Use it to research stocks and crypto, check options strategies, and save reports and decision history.
 
-Ask Claude to analyse a ticker. A team of agents works through it: market, sentiment, news, fundamentals and options analysts, a bull/bear debate, a trader, an options strategist, a risk team, a fact checker and a portfolio manager. The result is a Buy / Overweight / Hold / Underweight / Sell rating and a saved HTML report. Each decision is logged and later scored against what the market actually did.
+`uv` installs the pinned TradingAgents dependency in the project's `.venv`. Codex launches `server.py` as a local MCP server over standard input and output. The server imports TradingAgents and exposes selected capabilities as MCP tools, including market data, options calculations, and report storage. The `trading-analysis` skill guides the client through the research workflow. The original TradingAgents pipeline is also available with [separate model sign-in](#optional-original-tradingagents-pipeline).
 
-> **Research only, not financial advice.** Nothing here places trades.
->
-> Not affiliated with Tauric Research. See [NOTICE](NOTICE).
+> For research. This is an independent project. See [NOTICE](NOTICE) for upstream attribution.
 
 ## Install
 
-You need [Claude Code](https://claude.com/claude-code) and [uv](https://docs.astral.sh/uv/).
+### Codex
 
-From a local folder (it then runs straight from that folder):
+Install the [Codex CLI](https://learn.chatgpt.com/docs/cli), sign in with your own account, and install [uv](https://docs.astral.sh/uv/). Clone this repository and run the following from its root on macOS or Linux. If you already have a `trading-analysis` skill link, check that it points to this checkout and skip the `ln -s` command if it does.
 
+```bash
+uv sync --frozen --no-dev
+codex mcp add tradingagents \
+  --env "TRADINGAGENTS_ENV_FILE=$PWD/.env.codex" \
+  --env TRADINGAGENTS_FRONTEND=Codex \
+  -- "$(command -v uv)" run --directory "$PWD" --frozen --no-dev --quiet python server.py
+
+mkdir -p "$HOME/.codex/skills"
+ln -s "$PWD/skills/trading-analysis" "$HOME/.codex/skills/trading-analysis"
+codex mcp list
 ```
-/plugin marketplace add /path/to/tradingagents-claude
+
+Open the checkout in a fresh Codex chat and ask it to use TradingAgents to fetch an NVDA market snapshot. Your existing Codex sign-in is enough for this workflow.
+
+#### Optional original TradingAgents pipeline
+
+To run the upstream pipeline with an eligible ChatGPT Plus or Pro plan, create `.env.codex` from the provided example and complete the separate TradingAgents sign-in. Usage counts against your plan.
+
+```bash
+test -f .env.codex || cp .env.codex.example .env.codex
+.venv/bin/tradingagents login chatgpt
+```
+
+In `~/.codex/config.toml`, add `tool_timeout_sec = 660` to the existing `[mcp_servers.tradingagents]` section so `pipeline_wait` has time to finish. To require confirmation for backtests, add the following at the end of the file. Open a fresh Codex chat after setup.
+
+```toml
+[mcp_servers.tradingagents.tools.run_backtest]
+approval_mode = "prompt"
+```
+
+#### Optional read-only Robinhood connection
+
+Robinhood hosts a separate MCP server. To expose only portfolio and equity position reads in Codex, add this entry to `~/.codex/config.toml`, or update the existing `robinhood` entry.
+
+```toml
+[mcp_servers.robinhood]
+url = "https://agent.robinhood.com/mcp/trading"
+enabled_tools = ["get_portfolio", "get_equity_positions"]
+```
+
+Run the login command, authorize your own Robinhood account in the browser, then open a fresh Codex chat. See [Robinhood's onboarding instructions](https://robinhood.com/us/en/support/articles/agentic-trading-overview/).
+
+```bash
+codex mcp login robinhood
+```
+
+Both tools take a brokerage account number. With this two-tool allowlist, Codex needs the account number to read a specific account. `get_portfolio` returns portfolio value by asset class, cash, pending deposits, and buying power. `get_equity_positions` returns open stock and ETF positions with quantities, average cost when available, and share availability. This allowlist excludes account lookup, orders, transfers, and account changes. See [Robinhood's tool reference](https://robinhood.com/us/en/support/articles/trading-with-your-agent/).
+
+### Claude Code
+
+Install [Claude Code](https://claude.com/claude-code) and [uv](https://docs.astral.sh/uv/). In Claude Code, add the local checkout as a marketplace and install the plugin using its existing marketplace name.
+
+```text
+/plugin marketplace add /path/to/tradingagents-mcp
 /plugin install tradingagents@tradingagents-claude
 ```
-
-Or, once it's published on GitHub: `/plugin marketplace add ceharsh24/tradingagents-claude`, then the same install command.
 
 Restart Claude Code. On the first start, the plugin downloads TradingAgents and its Python dependencies, which takes about a minute. If its tools are missing in that first session, run `/mcp` and reconnect `tradingagents`.
 
@@ -33,9 +81,9 @@ Restart Claude Code. On the first start, the plugin downloads TradingAgents and 
 >
 > What's NVDA's implied move into earnings? Price a covered call for my 200 shares.
 
-Depth options:
+Depth options
 
-- `quick`: about 5 subagents; Claude writes the debate, the risk views and a short fact check itself
+- `quick`: about 5 subagents. The main agent writes the debate, risk views, and a short fact check.
 - `standard` (the default): about 13 subagents
 - `deep`: adds a second debate round
 
@@ -57,13 +105,13 @@ From your phone: start a Claude Code session on your computer, turn on Remote Co
 
 ## Two engines
 
-| | Claude runs the agents (default) | Original TradingAgents pipeline |
+| | Codex or Claude Code runs the agents (default) | Original TradingAgents pipeline |
 |---|---|---|
-| How | The `trading-analysis` skill: Claude and its subagents play each role, using the plugin's data tools | The `run_pipeline` tools run TradingAgents' own LangGraph pipeline |
-| Billed to | Your Claude plan | Your API key |
-| Turn on | Works out of the box | Set `ANTHROPIC_API_KEY` in `~/.tradingagents/.env`, then restart Claude Code |
+| How | The `trading-analysis` skill guides analysts, a bull/bear debate, a risk review, and a fact check using the local MCP tools. | `run_pipeline` runs TradingAgents' own LangGraph workflow. |
+| Usage | Your Codex or Claude Code session | Your ChatGPT plan or configured model-provider API key |
+| Setup | Register the MCP server and skill using the instructions above. | Follow the [ChatGPT sign-in steps](#optional-original-tradingagents-pipeline) for Codex, or configure the provider's API key, such as `ANTHROPIC_API_KEY` for Claude Code. |
 
-### With an API key
+### Pipeline commands
 
 Ask in plain words:
 
@@ -78,12 +126,12 @@ Ask in plain words:
 | `run_pipeline` | One analysis. You can set analysts, portfolio, debate and risk rounds, quick and deep models, and report language per run. Every step is checkpointed, so a failed or interrupted run resumes when you ask again (`restart=true` starts over). |
 | `run_backtest` | Runs the pipeline for every ticker on every date of a grid and scores each rating: how often it called the direction, and its mean alpha against the benchmark. |
 | `pipeline_settle` | Scores due decisions in the live memory log, using TradingAgents' own reflections |
-| `pipeline_wait` | Waits in the same turn until a job finishes and returns its report, so Remote Control notifies your phone |
+| `pipeline_wait` | Waits for the job in the current turn and returns the report when it finishes |
 | `pipeline_status`, `pipeline_report`, `pipeline_jobs` | Follow and read jobs |
 
-Each pipeline job takes 3–10 minutes. After a pipeline run, Claude adds the fact check and options sections on your plan, using `annotate_report`.
+Each pipeline job takes about 3–10 minutes. After a pipeline run, the skill uses `annotate_report` to add fact check and options sections.
 
-Jobs run inside the MCP server, so keep the Claude Code session open until a job finishes. If you close it, ask again and the run resumes from its checkpoint. While a job runs, the server keeps your Mac awake with `caffeinate`. A closed lid still sleeps. Set `TA_MCP_KEEP_AWAKE=0` to turn this off.
+Jobs run inside the MCP server, so keep the Codex or Claude Code session open until a job finishes. If you close it, ask again and the run resumes from its checkpoint. While a job runs, the server keeps your Mac awake with `caffeinate`. A closed lid still sleeps. Set `TA_MCP_KEEP_AWAKE=0` to turn this off.
 
 Backtests cost one full pipeline run per cell (tickers × dates). They are refused above `max_cells` (default 12), so you have to confirm a larger grid. They use a memory log of their own, never your live one.
 
@@ -95,7 +143,13 @@ Backtests cost one full pipeline run per cell (tickers × dates). They are refus
 
 ## Configure (optional)
 
-Copy [.env.example](.env.example) to `~/.tradingagents/.env`. That folder survives plugin updates. Useful settings:
+Copy [.env.example](.env.example) to `.env` in this folder. It's gitignored, so keys never get committed. Settings load in this order, and the first file to set a value wins:
+
+1. The file named by `TRADINGAGENTS_ENV_FILE` (Codex uses `.env.codex`)
+2. `<repo>/.env`
+3. `~/.tradingagents/.env` (use this for a plugin installed from GitHub, whose folder is replaced on update)
+
+Useful settings:
 
 - `SEC_EDGAR_USER_AGENT`: your name and email. SEC asks callers to identify themselves.
 - `FRED_API_KEY`: free; adds US macro data (rates, CPI, yields).
@@ -125,14 +179,13 @@ Stocks work on any exchange Yahoo covers (`RELIANCE.NS`, `0700.HK`, `AZN.L`, …
 
 ## Develop
 
+From the cloned repository root, install the development dependencies and run the checks.
+
 ```bash
-git clone https://github.com/ceharsh24/tradingagents-claude && cd tradingagents-claude
-uv sync
+uv sync --frozen
 uv run pytest
 uv run python tests/smoke_stdio.py
 ```
-
-To run your checkout as the plugin, run `/plugin marketplace add /path/to/tradingagents-claude` and install it from there. The plugin then runs straight from your folder.
 
 | File | What it is |
 |---|---|

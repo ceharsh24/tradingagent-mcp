@@ -9,7 +9,7 @@ runs on the Claude plan of whoever is using Claude Code. TradingAgents supplies:
 * the memory log: past decisions, their realised returns and lessons;
 * the report writer: the same report tree and HTML page the CLI saves.
 
-Settings (all optional) go in ~/.tradingagents/.env; see .env.example. If an
+Settings (all optional) go in <repo>/.env or ~/.tradingagents/.env; see .env.example. If an
 API key for TradingAgents' configured provider is set there, the
 original LangGraph pipeline is also exposed (run_pipeline and friends).
 
@@ -32,17 +32,20 @@ from typing import Literal
 from dotenv import load_dotenv
 
 HERE = Path(__file__).resolve().parent
-# Settings live outside the plugin folder, which is replaced on every update.
-# First match wins per variable; the real environment beats every file.
+# Settings, first match wins per variable (the real environment beats every file):
+# 1. TRADINGAGENTS_ENV_FILE: a front end's own overrides (Codex uses .env.codex)
+# 2. <repo>/.env: the local checkout's settings (gitignored)
+# 3. ~/.tradingagents/.env: for installs whose plugin folder is replaced on update
 CONFIG_FILES = [
     Path(p).expanduser() for p in (
-        os.getenv("TRADINGAGENTS_CLAUDE_ENV", ""),
+        os.getenv("TRADINGAGENTS_ENV_FILE") or os.getenv("TRADINGAGENTS_CLAUDE_ENV", ""),
+        str(HERE / ".env"),
         "~/.tradingagents/.env",
-        str(HERE / ".env"),  # a development checkout
     ) if p
 ]
 for _f in CONFIG_FILES:
     load_dotenv(_f, override=False)
+FRONTEND = os.getenv("TRADINGAGENTS_FRONTEND", "Claude Code")
 
 from mcp.server.mcpserver import MCPServer  # noqa: E402
 
@@ -613,7 +616,7 @@ def save_analysis(
     reports = {"market": market_report, "social": sentiment_report,
                "news": news_report, "fundamentals": fundamentals_report}
     settings = {  # shown in the report header
-        "version": tradingagents.__version__, "llm_provider": "Claude Code",
+        "version": tradingagents.__version__, "llm_provider": FRONTEND,
         "deep_think_llm": "session model", "quick_think_llm": "session model",
         "analysts": [k for k, v in reports.items() if v.strip()],
         "max_debate_rounds": 1, "max_risk_discuss_rounds": 1,

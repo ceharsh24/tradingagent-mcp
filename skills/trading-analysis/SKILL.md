@@ -3,13 +3,18 @@ name: trading-analysis
 description: Run a TradingAgents-style multi-agent analysis of a stock or crypto ticker (analyst team including an options analyst, bull/bear debate, trader, options strategist, risk team, fact checker, portfolio manager) using the tradingagents MCP tools, ending in a Buy/Overweight/Hold/Underweight/Sell rating and a saved report; or run the original TradingAgents pipeline or a backtest when an API key is configured. Use when the user asks to analyse, research, rate, backtest or "run TradingAgents / the pipeline on" a ticker, asks about a ticker's options (implied move, IV, pricing a covered call or spread), or wants past reports or decisions reviewed.
 ---
 
-# Trading analysis (TradingAgents, run by Claude)
+# Trading analysis (TradingAgents, run by you)
 
 You run the TradingAgents firm yourself: subagents play the analysts, debaters and
 fact checker, and you play the Research Manager, Trader, Options Strategist and
 Portfolio Manager. Market data, options math, memory and report saving come from the
 `tradingagents` MCP tools. This is research, not financial advice, and nothing here
 places trades. Say so once in the final answer.
+
+This skill runs in Claude Code and in Codex. Where it says "subagent", use your
+host's way of running parallel helpers (Claude Code: the Agent tool; Codex: spawn
+sub-agents). If you cannot run helpers, play each role yourself in turn and keep
+each role's output separate.
 
 ## Choose the path first
 
@@ -22,10 +27,10 @@ places trades. Say so once in the final answer.
   when the user says pipeline, API, "full TradingAgents", or asks for a backtest.
   - Analysis: `run_pipeline(ticker, trade_date, analysts, portfolio, debate_rounds,
     risk_rounds, …)`, then `pipeline_wait(job_id)` until it returns the report (call
-    again if it says still running). Waiting in the turn is what makes Remote Control
-    notify the user's phone when the result is ready. If a run failed or was
+    again if it says still running). Waiting in the turn means the reply arrives when
+    the result is ready (with Claude Code Remote Control, that notifies the phone). If a run failed or was
     interrupted, the same `run_pipeline` call resumes from the last finished step.
-  - Then add what the pipeline lacks, on the Claude plan: read
+  - Then add what the pipeline lacks, on your own plan: read
     `pipeline_report(job_id, detail="full")`; run the **Fact Checker** (Step 8) on it
     and, when options apply, the **Options Analyst** brief (Step 2) and **Options
     Strategist** (Step 6); attach them with `annotate_report(report_id, …)`. If the
@@ -35,7 +40,7 @@ places trades. Say so once in the final answer.
     clear yes. Wait with `pipeline_wait`; later read `backtest_results(run_id)`, and
     rerun with the `run_id` to settle pending cells.
   - Settle: `pipeline_settle` writes TradingAgents' own reflections for due decisions.
-- **Claude runs the agents** (default otherwise, no API cost): follow the steps below.
+- **You run the agents** (default otherwise, no API cost): follow the steps below.
 
 ## Inputs
 
@@ -55,6 +60,13 @@ Read from the request; ask only if the ticker is missing.
 - **portfolio** (optional): cash and positions the user mentions. Pass to the Trader,
   Options Strategist, risk team and Portfolio Manager. No portfolio means "no knowledge
   of holdings", not "flat".
+  - If a brokerage connector is available (for example `robinhood` tools) and the user
+    has not given holdings or said to ignore them, read them **read-only**: call only
+    its `get_…`/`list_…` tools for positions and cash or buying power, then build
+    `{"cash": …, "currency": …, "positions": [{"ticker", "quantity", "average_price"}]}`.
+    Never call an order, cancel, transfer or account-changing tool, even if asked
+    mid-analysis; tell the user to act in the Robinhood app themselves. Say in the
+    final answer which holdings were used (e.g. "your 40 NVDA shares at $152 average").
 
 ## Step 0: settle the memory log
 
@@ -69,7 +81,7 @@ below as INSTRUMENT. Use the exact ticker it returns everywhere.
 
 ## Step 2: analyst team, in parallel
 
-Launch one subagent per analyst **in a single message** (Agent tool, general-purpose).
+Launch one subagent per analyst, all at once so they run in parallel.
 Each prompt contains: INSTRUMENT, `as_of`, the role brief below, and these rules:
 
 > Use only the `tradingagents` MCP tools, always passing as_of=<as_of>. Do not use web

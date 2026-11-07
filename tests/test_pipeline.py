@@ -212,3 +212,14 @@ def test_sleep_guard(monkeypatch):
     monkeypatch.setenv("TA_MCP_KEEP_AWAKE", "0")
     guard.hold(+1)
     assert len(started) == 1  # disabled: no new caffeinate
+
+
+def test_chatgpt_provider_needs_sign_in(monkeypatch, tmp_path):
+    import tradingagents.llm_clients.chatgpt_auth as auth
+    monkeypatch.setenv("TRADINGAGENTS_LLM_PROVIDER", "chatgpt")
+    monkeypatch.setattr(auth, "AUTH_FILE", tmp_path / "chatgpt-auth.json")
+    with pytest.raises(ValueError, match="login chatgpt"):
+        pipeline.run_pipeline("NVDA")
+    assert pipeline.keys_present() is False
+    (tmp_path / "chatgpt-auth.json").write_text("{}")
+    assert pipeline.keys_present() is True
