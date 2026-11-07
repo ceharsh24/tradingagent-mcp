@@ -1,0 +1,24 @@
+[project]
+name = "tradingagents-claude"
+version = "0.3.0"
+description = "Claude Code plugin: TradingAgents-style multi-agent stock analysis, run by Claude, with TradingAgents' point-in-time data, memory and reports."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    # Pinned to an upstream release so a change there cannot break installs.
+    # TradingAgents is not on PyPI, so it comes from its GitHub tag.
+    "tradingagents @ git+https://github.com/TauricResearch/TradingAgents@v0.7.1",
+    "mcp>=2.3,<3",
+    "python-dotenv>=1.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv]
+# Scripts, not an installable package: uv only manages the environment.
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

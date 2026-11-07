@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "tradingagents-claude",
+  "description": "Claude Code plugins for TradingAgents-style market research.",
+  "owner": {
+    "name": "Harsh Shah",
+    "url": "https://github.com/ceharsh24"
+  },
+  "plugins": [
+    {
+      "name": "tradingagents",
+      "source": "./",
+      "description": "TradingAgents-style multi-agent stock analysis run by Claude, with point-in-time market data, decision memory and HTML reports.",
+      "version": "0.3.0"
+    }
+  ]
+}

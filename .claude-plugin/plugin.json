@@ -1,0 +1,37 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "tradingagents",
+  "version": "0.3.0",
+  "description": "TradingAgents-style multi-agent stock analysis run by Claude on your plan: analysts, bull/bear debate, trader, risk team and portfolio manager, with TradingAgents' point-in-time market data, decision memory and HTML reports. Research only, not financial advice.",
+  "author": {
+    "name": "Harsh Shah",
+    "url": "https://github.com/ceharsh24"
+  },
+  "homepage": "https://github.com/ceharsh24/tradingagents-claude",
+  "repository": "https://github.com/ceharsh24/tradingagents-claude",
+  "license": "Apache-2.0",
+  "keywords": [
+    "trading",
+    "stocks",
+    "finance",
+    "research",
+    "multi-agent",
+    "tradingagents",
+    "mcp"
+  ],
+  "mcpServers": {
+    "tradingagents": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "--frozen",
+        "--no-dev",
+        "--quiet",
+        "python",
+        "server.py"
+      ]
+    }
+  }
+}
