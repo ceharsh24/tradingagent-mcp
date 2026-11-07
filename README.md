@@ -44,12 +44,81 @@ approval_mode = "prompt"
 
 #### Optional read-only Robinhood connection
 
-Robinhood hosts a separate MCP server. To expose only portfolio and equity position reads in Codex, add this entry to `~/.codex/config.toml`, or update the existing `robinhood` entry.
+Robinhood hosts a separate MCP server. To enable the documented read-only tools for external agents, add this entry to `~/.codex/config.toml`, or update the existing `robinhood` entry. Trim the list to the tools you want Codex to access.
 
 ```toml
 [mcp_servers.robinhood]
 url = "https://agent.robinhood.com/mcp/trading"
-enabled_tools = ["get_portfolio", "get_equity_positions"]
+enabled_tools = [
+    # Account and portfolio
+    "get_accounts",
+    "get_portfolio",
+    "get_realized_pnl",
+    "get_pnl_trade_history",
+    "search",
+    "get_limited_margin_upgrade_info",
+    "get_trade_approvals",
+    "get_trade_approval_setting",
+    # Watchlists
+    "get_watchlists",
+    "get_watchlist_items",
+    "get_option_watchlist",
+    "get_popular_watchlists",
+    # Market data
+    "get_equity_historicals",
+    "get_equity_fundamentals",
+    "get_financials",
+    "get_equity_price_book",
+    "get_equity_technical_indicators",
+    "get_earnings_results",
+    "get_earnings_calendar",
+    "get_indexes",
+    "get_index_quotes",
+    "get_sec_filing_index",
+    "get_sec_filing",
+    "get_sec_filing_facts",
+    "get_sec_filing_facts_catalog",
+    "get_index_historicals",
+    "get_politician_trades",
+    "get_equity_analyst_ratings",
+    # Equities
+    "get_equity_positions",
+    "get_equity_tax_lots",
+    "get_equity_quotes",
+    "get_equity_orders",
+    "get_equity_tradability",
+    # Options
+    "get_option_level_upgrade_info",
+    "get_option_chains",
+    "get_option_historicals",
+    "get_option_instruments",
+    "get_option_quotes",
+    "get_option_positions",
+    "get_option_orders",
+    # Crypto
+    "get_currency_pairs",
+    "get_crypto_quotes",
+    "get_crypto_positions",
+    "get_crypto_orders",
+    "get_crypto_account_onboarding_info",
+    "get_crypto_tax_lots",
+    # Scanners
+    "get_scans",
+    "get_scanner_filter_specs",
+    "run_scan",
+    "get_scanner_datapoints",
+    "preview_scan",
+    # Alerts
+    "get_alerts",
+    "get_alert_log",
+    # Advanced order history
+    "get_advanced_orders",
+    # Legend
+    "get_legend_charts",
+    "get_legend_indicators",
+    "get_legend_indicator_catalog",
+    "get_legend_layouts",
+]
 ```
 
 Run the login command, authorize your own Robinhood account in the browser, then open a fresh Codex chat. See [Robinhood's onboarding instructions](https://robinhood.com/us/en/support/articles/agentic-trading-overview/).
@@ -58,7 +127,7 @@ Run the login command, authorize your own Robinhood account in the browser, then
 codex mcp login robinhood
 ```
 
-Both tools take a brokerage account number. With this two-tool allowlist, Codex needs the account number to read a specific account. `get_portfolio` returns portfolio value by asset class, cash, pending deposits, and buying power. `get_equity_positions` returns open stock and ETF positions with quantities, average cost when available, and share availability. This allowlist excludes account lookup, orders, transfers, and account changes. See [Robinhood's tool reference](https://robinhood.com/us/en/support/articles/trading-with-your-agent/).
+Account-specific reads use a brokerage account number. With `get_accounts` enabled, Codex can look up your linked accounts. The allowlist includes portfolio and position reads, order history, market data, watchlists, scanner results, alerts, and Legend data. Actual availability depends on the tools Robinhood advertises to your signed-in session. Trade submission, cancellation, exercises, order previews, transfers, and changes to saved settings are outside this allowlist. See [Robinhood's external-agent tool reference](https://robinhood.com/us/en/support/articles/trading-with-your-agent/#Agenttools).
 
 ### Claude Code
 

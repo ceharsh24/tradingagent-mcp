@@ -1,6 +1,6 @@
 ---
 name: trading-analysis
-description: Run a TradingAgents-style multi-agent analysis of a stock or crypto ticker (analyst team including an options analyst, bull/bear debate, trader, options strategist, risk team, fact checker, portfolio manager) using the tradingagents MCP tools, ending in a Buy/Overweight/Hold/Underweight/Sell rating and a saved report; or run the original TradingAgents pipeline or a backtest when an API key is configured. Use when the user asks to analyse, research, rate, backtest or "run TradingAgents / the pipeline on" a ticker, asks about a ticker's options (implied move, IV, pricing a covered call or spread), or wants past reports or decisions reviewed.
+description: Research or rate a stock or crypto ticker with TradingAgents, analyze options, run the configured TradingAgents pipeline or a backtest, or review saved reports and decisions. Also use for read-only Robinhood account or market data requests when the connector is available.
 ---
 
 # Trading analysis (TradingAgents, run by you)
@@ -20,6 +20,8 @@ each role's output separate.
 
 - **Past work.** "What did we say about NVDA?" → `list_reports(ticker)`, then
   `read_report(report_id)`. "How did the backtest do?" → `backtest_results`.
+- **Robinhood data request.** Use the relevant read tools below. Answer directly without
+  starting the analysis workflow or logging a decision.
 - **Options question only** ("NVDA's implied move into earnings", "price a covered
   call on AAPL", "is IV rich?") → answer with `options_overview`, `options_chain` and
   `options_strategy` directly, using the Options Strategist rules below. No full analysis.
@@ -44,7 +46,7 @@ each role's output separate.
 
 ## Inputs
 
-Read from the request; ask only if the ticker is missing.
+Read inputs from the request. For ticker analysis, ask for the ticker when it is missing.
 
 - **ticker**: Yahoo symbol with exchange suffix (NVDA, RELIANCE.NS, TCS.NS, 0700.HK, BTC-USD).
   Map plain names to symbols yourself ("Reliance" → RELIANCE.NS) and say which you used.
@@ -57,16 +59,37 @@ Read from the request; ask only if the ticker is missing.
   on Yahoo). Skip options if the user says so; skip fundamentals for crypto.
 - **depth**: `quick` (no subagents for debate, risk or fact check), `standard`
   (default), `deep` (two debate rounds).
-- **portfolio** (optional): cash and positions the user mentions. Pass to the Trader,
-  Options Strategist, risk team and Portfolio Manager. No portfolio means "no knowledge
-  of holdings", not "flat".
-  - If a brokerage connector is available (for example `robinhood` tools) and the user
-    has not given holdings or said to ignore them, read them **read-only**: call only
-    its `get_…`/`list_…` tools for positions and cash or buying power, then build
-    `{"cash": …, "currency": …, "positions": [{"ticker", "quantity", "average_price"}]}`.
-    Never call an order, cancel, transfer or account-changing tool, even if asked
-    mid-analysis; tell the user to act in the Robinhood app themselves. Say in the
-    final answer which holdings were used (e.g. "your 40 NVDA shares at $152 average").
+- **portfolio** (optional): use the cash and positions supplied by the user or the
+  relevant brokerage data when they request a portfolio-aware analysis. Pass only
+  the needed inputs to the Trader, Options Strategist, risk team and Portfolio
+  Manager. Treat missing portfolio information as unknown.
+
+## Robinhood reads
+
+- Use the separate `robinhood` MCP when the user asks for Robinhood data or asks to
+  use their linked holdings. Use `get_accounts` for account lookup when available.
+  Follow each tool's account selection requirements. If multiple accounts match,
+  ask the user to choose by account label or last four digits. If lookup is
+  unavailable and a tool requires an account number, ask for the needed identifier.
+  Keep full account numbers and raw account payloads out of replies and reports.
+- For a portfolio snapshot use `get_portfolio`. Keep cash, total value, and buying
+  power separate. Use the asset-specific position, order history, or tax lot tools
+  for detail and the realized P&L tools for closed-trade results. Follow pagination
+  when the user requests a complete list.
+- Batch symbols where supported and page sequentially. On a rate-limit response,
+  honor any retry delay and stop if the next attempt is throttled again.
+- For Robinhood options market data, look up the chain or instrument and use
+  `get_option_quotes` or `get_option_historicals` for the requested contracts. For
+  strategy calculations, use the TradingAgents options tools. Label Robinhood
+  quotes and TradingAgents estimates by source and timestamp when comparing them.
+- For a current portfolio-aware analysis, map broker cash and relevant equity
+  positions to the pipeline's `cash`, `currency`, and `positions` inputs using the
+  broker's share quantity and average cost when available. Use the broker's
+  sellable quantity when checking available shares. Treat live holdings and quotes
+  as current data and exclude them from past-date analyses and backtests.
+- Use retrieval tools, saved scan queries, and unsaved scanner previews. Keep
+  order previews, submissions, cancellations, exercises, transfers, and changes
+  to watchlists, alerts, or account settings outside this skill.
 
 ## Step 0: settle the memory log
 
